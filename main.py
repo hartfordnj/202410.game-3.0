@@ -176,33 +176,42 @@ def main():
     while attempts < max_attempts:
         display_ui(game_state)
         list_books_in_bookbag()  # Display the books in the player's bookbag
+
+        # If it's after the first guess and the bookbag is not empty
+        if attempts > 0 and bookbag:
+            print("Would you like to use a book from your bookbag? (Y/N)")
+            use_book = input().strip().upper()
+            if use_book == 'Y':
+                # Display list of books
+                print("Choose a book to use:")
+                for idx, book in enumerate(bookbag):
+                    print(f"{idx + 1}. {book.name} - {book.description}")
+                choice = input("Enter the number of the book to use: ").strip()
+                if choice.isdigit():
+                    choice = int(choice) - 1
+                    if 0 <= choice < len(bookbag):
+                        selected_book = bookbag[choice]
+                        trigger_chance = selected_book.get_trigger_chance()
+                        if random.random() <= trigger_chance:
+                            selected_book.apply_effect(game_state)
+                            print(f"The effect of '{selected_book.name}' has been applied!")
+                        else:
+                            print(f"The effect of '{selected_book.name}' did not trigger.")
+                    else:
+                        print("Invalid selection. No book was used.")
+                else:
+                    print("Invalid input. No book was used.")
+            else:
+                print("No book used this turn.")
+        else:
+            print("No books available or this is your first guess.")
+
+        # Proceed to get player's guess
         player_input = input("Enter your guess: ").upper()
 
         if len(player_input) != 5 or not player_input.isalpha():
             print("Please enter a valid 5-letter word.")
             continue
-
-        # Allow the player to choose a book to use after the first guess in each round
-        if attempts > 0 and bookbag:
-            print("Would you like to use a book? Y/N")
-            use_book = input().strip().upper()
-            if use_book == 'Y':
-                print("Choose a book to use:")
-                for idx, book in enumerate(bookbag):
-                    print(f"{idx + 1}. {book.name} - {book.description}")
-                choice = int(input("Enter the number of the book to use: ")) - 1
-                if 0 <= choice < len(bookbag):
-                    selected_book = bookbag[choice]
-                    trigger_chance = selected_book.get_trigger_chance()
-                    if random.random() <= trigger_chance:
-                        selected_book.apply_effect(game_state)
-                        print(f"The effect of '{selected_book.name}' has been applied!")
-                    else:
-                        print(f"The effect of '{selected_book.name}' did not trigger.")
-                else:
-                    print("Invalid selection. No book was used.")
-            else:
-                print("No book used this turn.")
 
         guess = list(player_input)
         guess_history.append(guess)
