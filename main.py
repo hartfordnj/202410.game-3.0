@@ -9,11 +9,11 @@ class Book:
         self.description = description
         self.base_trigger_chance = base_trigger_chance
         self.effect = effect  # Function defining the book's effect
-        self.modifiers = []
+        self.modifiers = []  # List to hold any modifiers applied to the book
 
-    def get_trigger_chance(self):
-        # Calculate the actual trigger chance, considering modifiers
-        chance = self.base_trigger_chance
+    def get_trigger_chance(self, game_state):
+        # Calculate the actual trigger chance, considering modifiers and global modifiers
+        chance = self.base_trigger_chance + game_state['global_trigger_chance_bonus']
         for modifier in self.modifiers:
             chance += modifier.trigger_chance_bonus
         # Ensure the chance does not exceed 100%
@@ -22,6 +22,11 @@ class Book:
     def apply_effect(self, game_state):
         # Apply the book's effect to the game state
         self.effect(game_state)
+
+class Modifier:
+    def __init__(self, name, trigger_chance_bonus=0):
+        self.name = name
+        self.trigger_chance_bonus = trigger_chance_bonus
 
 # Book Effect Functions
 def reveal_first_position(game_state):
@@ -47,6 +52,11 @@ def spot_random_vowel(game_state):
         revealed_vowel = random.choice(vowels).upper()
         game_state['correct_letters'].add(revealed_vowel)
         game_state.setdefault('active_effects', []).append(f"Spot Random Vowel: {revealed_vowel}")
+
+def increase_global_trigger_chance(game_state):
+    # Increase global trigger chance bonus by 5%
+    game_state['global_trigger_chance_bonus'] += 0.05
+    game_state.setdefault('active_effects', []).append("Global Trigger Chance Increased by 5%")
 
 # Game Functions
 def clear_screen():
@@ -107,6 +117,12 @@ available_books = [
         base_trigger_chance=0.4,
         effect=spot_random_vowel
     ),
+    Book(
+        name="Global Trigger Chance Increase",
+        description="Permanently increases trigger chance of all books by 5%.",
+        base_trigger_chance=1.0,  # This effect always applies when the book is used
+        effect=increase_global_trigger_chance
+    ),
     # Add more books as needed
 ]
 
@@ -163,6 +179,10 @@ def choose_book_reward():
     else:
         print("Invalid selection. You did not receive a new book.")
 
+def apply_modifier_to_book(modifier, book):
+    book.modifiers.append(modifier)
+    print(f"Applied modifier '{modifier.name}' to book '{book.name}'.")
+
 # Main Game Loop
 def main():
     answer = select_word()
@@ -181,7 +201,8 @@ def main():
         'incorrect_letters': incorrect_letters,
         'guessed_letters': guessed_letters,
         'guess_history': guess_history,
-        'active_effects': []
+        'active_effects': [],
+        'global_trigger_chance_bonus': 0.0  # Global trigger chance bonus for all books
     }
 
     last_book_used = None
@@ -210,7 +231,7 @@ def main():
                     if 0 <= choice < len(bookbag):
                         selected_book = bookbag[choice]
                         last_book_used = selected_book
-                        trigger_chance = selected_book.get_trigger_chance()
+                        trigger_chance = selected_book.get_trigger_chance(game_state)
                         if random.random() <= trigger_chance:
                             selected_book.apply_effect(game_state)
                             book_triggered = True
