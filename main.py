@@ -2,6 +2,79 @@
 import os
 import random
 
+# Word Banks for Different Difficulty Levels
+
+easy_words = [
+    "apple", "bread", "chair", "drink", "flame", "grape", "lemon", "plant", "storm", "water",
+    "smile", "beach", "grace", "light", "stone", "candy", "fruit", "green", "house", "juice",
+    "music", "night", "olive", "peach"
+]
+
+medium_words = [
+    "amber", "bloom", "brisk", "climb", "creek", "dream", "eagle", "frost", "ghost", "glove",
+    "hover", "jelly", "knife", "leech", "mercy", "naval", "ocean", "prism", "quilt", "raven",
+    "spear", "thorn", "union", "valve", "waltz"
+]
+
+hard_words = [
+    "abyss", "blitz", "crisp", "dwarf", "fjord", "glyph", "hazel", "ivory", "jumps", "kayak",
+    "lynch", "myths", "nymph", "ovary", "pique", "quasi", "rhyme", "sphinx", "twist", "vapor",
+    "wretch", "xenon", "yacht", "zesty", "zilch"
+]
+
+expert_words = [
+    "azure", "banjo", "cacti", "delta", "equip", "focal", "gipsy", "haiku", "injury", "jazzy",
+    "khaki", "length", "matrix", "numb", "oxygen", "plaza", "quartz", "rhythm", "squad", "thyme",
+    "uncut", "vodka", "whack", "xylem", "zonal"
+]
+
+legendary_words = [
+    "axiom", "blaze", "croak", "duchy", "ethos", "froth", "glyph", "hymen", "ivory", "jumbo",
+    "kudzu", "leech", "mauve", "nexus", "onyx", "phlox", "quake", "repel", "siren", "trove",
+    "umbra", "vortex", "waltz", "xenon", "yacht"
+]
+
+# Function to select a word based on difficulty level
+def select_word(difficulty):
+    if difficulty == 'easy':
+        return random.choice(easy_words).upper()
+    elif difficulty == 'medium':
+        return random.choice(medium_words).upper()
+    elif difficulty == 'hard':
+        return random.choice(hard_words).upper()
+    elif difficulty == 'expert':
+        return random.choice(expert_words).upper()
+    elif difficulty == 'legendary':
+        return random.choice(legendary_words).upper()
+    else:
+        raise ValueError("Invalid difficulty level. Choose from: easy, medium, hard, expert, legendary.")
+
+# Enemies and Their Difficulty Distributions
+enemies = {
+    "Grunt": {"easy": 30, "medium": 40, "hard": 20, "expert": 1, "legendary": 9},
+    "Warrior": {"easy": 20, "medium": 30, "hard": 30, "expert": 10, "legendary": 10},
+    "Champion": {"easy": 10, "medium": 20, "hard": 40, "expert": 20, "legendary": 10},
+    "Overlord": {"easy": 5, "medium": 15, "hard": 40, "expert": 25, "legendary": 15},
+    "God": {"easy": 10, "medium": 20, "hard": 20, "expert": 35, "legendary": 15}
+}
+
+# Function to select a word based on an enemy's difficulty distribution
+def select_word_for_enemy(enemy_name):
+    difficulty_weights = enemies[enemy_name]
+    difficulties = list(difficulty_weights.keys())
+    weights = list(difficulty_weights.values())
+    chosen_difficulty = random.choices(difficulties, weights=weights, k=1)[0]
+    return select_word(chosen_difficulty)
+
+# Function to generate an enemy sequence based on the number of rounds
+def generate_enemy_sequence(num_rounds):
+    enemy_types = ["Grunt", "Warrior", "Champion", "Overlord", "God"]
+    sequence = []
+    for i in range(num_rounds):
+        enemy = enemy_types[min(i // 2, len(enemy_types) - 1)]  # Adjust enemy type based on round
+        sequence.append(enemy)
+    return sequence
+
 # Class Definitions
 class Book:
     def __init__(self, name, description, base_trigger_chance, effect):
@@ -61,10 +134,6 @@ def increase_global_trigger_chance(game_state):
 # Game Functions
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
-
-def select_word():
-    word_list = ["apple", "bread", "chair", "drink", "flame", "grape", "lemon", "plant", "storm", "water"]
-    return random.choice(word_list).upper()
 
 def display_ui(game_state, last_book_used=None, book_triggered=None):
     clear_screen()
@@ -179,107 +248,126 @@ def choose_book_reward():
     else:
         print("Invalid selection. You did not receive a new book.")
 
-def apply_modifier_to_book(modifier, book):
-    book.modifiers.append(modifier)
-    print(f"Applied modifier '{modifier.name}' to book '{book.name}'.")
-
 # Main Game Loop
 def main():
-    answer = select_word()
-    current_guess = ['_'] * 5
-    guess_history = []
-    correct_letters = set()
-    incorrect_letters = set()
-    guessed_letters = set()
-    max_attempts = 6
-    attempts = 0
+    global bookbag  # Ensure we're using the global bookbag
 
-    game_state = {
-        'current_guess': current_guess,
-        'answer': answer,
-        'correct_letters': correct_letters,
-        'incorrect_letters': incorrect_letters,
-        'guessed_letters': guessed_letters,
-        'guess_history': guess_history,
-        'active_effects': [],
-        'global_trigger_chance_bonus': 0.0  # Global trigger chance bonus for all books
-    }
+    # Ask the player how many rounds they want to play
+    num_rounds = input("Enter the number of rounds you want to play (e.g., 8): ")
+    if not num_rounds.isdigit():
+        num_rounds = 8
+    else:
+        num_rounds = int(num_rounds)
 
-    last_book_used = None
-    book_triggered = None
+    enemy_sequence = generate_enemy_sequence(num_rounds)
+    round_number = 1
 
-    while attempts < max_attempts:
-        display_ui(game_state, last_book_used, book_triggered)
-        list_books_in_bookbag()  # Display the books in the player's bookbag
+    for enemy_name in enemy_sequence:
+        print(f"Round {round_number}: Facing {enemy_name}!")
+        # Reset game state variables for the new round
+        answer = select_word_for_enemy(enemy_name)
+        current_guess = ['_'] * 5
+        guess_history = []
+        correct_letters = set()
+        incorrect_letters = set()
+        guessed_letters = set()
+        attempts = 0
 
-        # Reset book tracking variables
+        game_state = {
+            'current_guess': current_guess,
+            'answer': answer,
+            'correct_letters': correct_letters,
+            'incorrect_letters': incorrect_letters,
+            'guessed_letters': guessed_letters,
+            'guess_history': guess_history,
+            'active_effects': [],
+            'global_trigger_chance_bonus': 0.0  # Carry over global modifiers if needed
+        }
+
         last_book_used = None
         book_triggered = None
 
-        # If it's after the first guess and the bookbag is not empty
-        if attempts > 0 and bookbag:
-            print("Would you like to use a book from your bookbag? (Y/N)")
-            use_book = input().strip().upper()
-            if use_book == 'Y':
-                # Display list of books
-                print("Choose a book to use:")
-                for idx, book in enumerate(bookbag):
-                    print(f"{idx + 1}. {book.name} - {book.description}")
-                choice = input("Enter the number of the book to use: ").strip()
-                if choice.isdigit():
-                    choice = int(choice) - 1
-                    if 0 <= choice < len(bookbag):
-                        selected_book = bookbag[choice]
-                        last_book_used = selected_book
-                        trigger_chance = selected_book.get_trigger_chance(game_state)
-                        if random.random() <= trigger_chance:
-                            selected_book.apply_effect(game_state)
-                            book_triggered = True
-                            print(f"The effect of '{selected_book.name}' has been applied!")
-                        else:
-                            book_triggered = False
-                            print(f"The effect of '{selected_book.name}' did not trigger.")
-                    else:
-                        print("Invalid selection. No book was used.")
-                else:
-                    print("Invalid input. No book was used.")
-            else:
-                print("No book used this turn.")
-        else:
-            print("No books available or this is your first guess.")
+        max_attempts = 6  # You can adjust this if needed
 
-        # Proceed to get player's guess
-        player_input = input("Enter your guess: ").upper()
-
-        if len(player_input) != 5 or not player_input.isalpha():
-            print("Please enter a valid 5-letter word.")
-            continue
-
-        guess = list(player_input)
-        guess_history.append(guess)
-        guessed_letters.update(guess)
-
-        # Check each letter in the guess
-        for i, letter in enumerate(guess):
-            if letter == answer[i]:
-                current_guess[i] = letter
-                correct_letters.add(letter)
-            elif letter in answer:
-                correct_letters.add(letter)
-            else:
-                incorrect_letters.add(letter)
-
-        attempts += 1
-
-        # Check win condition
-        if ''.join(current_guess) == answer:
+        # Start the guessing game loop for this enemy
+        while attempts < max_attempts:
             display_ui(game_state, last_book_used, book_triggered)
-            print(f"Congratulations! You've guessed the word '{answer}' correctly!")
-            choose_book_reward()  # Allow the player to choose a book reward after winning
-            break
-    else:
-        display_ui(game_state, last_book_used, book_triggered)
-        print(f"Game Over! The correct word was '{answer}'.")
+            list_books_in_bookbag()  # Display the books in the player's bookbag
+
+            # Reset book tracking variables
+            last_book_used = None
+            book_triggered = None
+            game_state['active_effects'] = []  # Reset active effects for this turn
+
+            # If it's after the first guess and the bookbag is not empty
+            if attempts > 0 and bookbag:
+                print("Would you like to use a book from your bookbag? (Y/N)")
+                use_book = input().strip().upper()
+                if use_book == 'Y':
+                    # Display list of books
+                    print("Choose a book to use:")
+                    for idx, book in enumerate(bookbag):
+                        print(f"{idx + 1}. {book.name} - {book.description}")
+                    choice = input("Enter the number of the book to use: ").strip()
+                    if choice.isdigit():
+                        choice = int(choice) - 1
+                        if 0 <= choice < len(bookbag):
+                            selected_book = bookbag[choice]
+                            last_book_used = selected_book
+                            trigger_chance = selected_book.get_trigger_chance(game_state)
+                            if random.random() <= trigger_chance:
+                                selected_book.apply_effect(game_state)
+                                book_triggered = True
+                                print(f"The effect of '{selected_book.name}' has been applied!")
+                            else:
+                                book_triggered = False
+                                print(f"The effect of '{selected_book.name}' did not trigger.")
+                        else:
+                            print("Invalid selection. No book was used.")
+                    else:
+                        print("Invalid input. No book was used.")
+                else:
+                    print("No book used this turn.")
+            else:
+                print("No books available or this is your first guess.")
+
+            # Proceed to get player's guess
+            player_input = input("Enter your guess: ").upper()
+
+            if len(player_input) != 5 or not player_input.isalpha():
+                print("Please enter a valid 5-letter word.")
+                continue
+
+            guess = list(player_input)
+            guess_history.append(guess)
+            guessed_letters.update(guess)
+
+            # Check each letter in the guess
+            for i, letter in enumerate(guess):
+                if letter == answer[i]:
+                    current_guess[i] = letter
+                    correct_letters.add(letter)
+                elif letter in answer:
+                    correct_letters.add(letter)
+                else:
+                    incorrect_letters.add(letter)
+
+            attempts += 1
+
+            # Check win condition
+            if ''.join(current_guess) == answer:
+                display_ui(game_state, last_book_used, book_triggered)
+                print(f"Congratulations! You've defeated {enemy_name} by guessing the word '{answer}'!")
+                choose_book_reward()  # Allow the player to choose a book reward after winning
+                break
+        else:
+            display_ui(game_state, last_book_used, book_triggered)
+            print(f"Game Over! You were defeated by {enemy_name}. The correct word was '{answer}'.")
+            return  # End the game if the player loses
+
+        round_number += 1
+
+    print("Congratulations! You have defeated all enemies!")
 
 if __name__ == "__main__":
     main()
