@@ -29,30 +29,39 @@ word_list = ["apple", "bread", "chair", "drink", "flame", "grape", "lemon", "pla
 def select_word():
     return random.choice(word_list).upper()
 
-def display_ui(current_guess, guess_history, correct_letters, incorrect_letters):
+def display_ui(game_state):
     clear_screen()
     print("Guess the 5-letter word!\n")
-    print(f"Current Guess: {' '.join(current_guess)}\n")
+    print(f"Current Guess: {' '.join(game_state['current_guess'])}\n")
     print("Guess History:")
-    for guess in guess_history:
+    for guess in game_state['guess_history']:
         print(' '.join(guess))
     print()
-    print("[O] | " + (', '.join(sorted(correct_letters)) if correct_letters else "[none]"))
-    print("[X] | " + (', '.join(sorted(incorrect_letters)) if incorrect_letters else "[none]"))
+    print("[O] | " + (', '.join(sorted(game_state['correct_letters'])) if game_state['correct_letters'] else "[none]"))
+    print("[X] | " + (', '.join(sorted(game_state['incorrect_letters'])) if game_state['incorrect_letters'] else "[none]"))
+    print()
+    # Show any additional information such as active effects
+    if game_state and 'active_effects' in game_state and game_state['active_effects']:
+        print("Active Effects:")
+        for effect in game_state['active_effects']:
+            print(f"- {effect}")
     print()
 
 def reveal_first_position(game_state):
     # Reveal the first letter of the answer in the current guess
     game_state['current_guess'][0] = game_state['answer'][0].upper()
+    game_state.setdefault('active_effects', []).append("Reveal First Position")
 
 def reveal_last_position(game_state):
     # Reveal the last letter of the answer in the current guess
     game_state['current_guess'][-1] = game_state['answer'][-1].upper()
+    game_state.setdefault('active_effects', []).append("Reveal Last Position")
 
 def reveal_middle_position(game_state):
     # Reveal the middle letter of the answer in the current guess
     middle_index = len(game_state['answer']) // 2
     game_state['current_guess'][middle_index] = game_state['answer'][middle_index].upper()
+    game_state.setdefault('active_effects', []).append("Reveal Middle Position")
 
 def spot_random_vowel(game_state):
     # Add a random vowel from the answer to correct letters
@@ -60,6 +69,7 @@ def spot_random_vowel(game_state):
     if vowels:
         revealed_vowel = random.choice(vowels).upper()
         game_state['correct_letters'].add(revealed_vowel)
+        game_state.setdefault('active_effects', []).append(f"Spot Random Vowel: {revealed_vowel}")
 
 # Create a repository of available books
 available_books = [
@@ -125,6 +135,24 @@ def list_books_in_bookbag():
     else:
         print("Your bookbag is empty.")
 
+def choose_book_reward():
+    print("Choose one of the following books as your reward:")
+    # Exclude books already in the bookbag
+    available_choices = [book for book in available_books if book not in bookbag]
+    if len(available_choices) == 0:
+        print("No new books are available.")
+        return
+    # Provide up to two random book choices
+    reward_books = random.sample(available_choices, min(2, len(available_choices)))
+    for idx, book in enumerate(reward_books):
+        print(f"{idx + 1}. {book.name} - {book.description}")
+    choice = int(input("Enter the number of the book you want: ")) - 1
+    if 0 <= choice < len(reward_books):
+        selected_book = reward_books[choice]
+        add_book_to_bookbag(selected_book)
+    else:
+        print("Invalid selection. You did not receive a new book.")
+
 def main():
     answer = select_word()
     current_guess = ['_'] * 5
@@ -141,11 +169,12 @@ def main():
         'correct_letters': correct_letters,
         'incorrect_letters': incorrect_letters,
         'guessed_letters': guessed_letters,
-        'guess_history': guess_history
+        'guess_history': guess_history,
+        'active_effects': []
     }
 
     while attempts < max_attempts:
-        display_ui(current_guess, guess_history, correct_letters, incorrect_letters)
+        display_ui(game_state)
         list_books_in_bookbag()  # Display the books in the player's bookbag
         player_input = input("Enter your guess: ").upper()
 
@@ -153,11 +182,27 @@ def main():
             print("Please enter a valid 5-letter word.")
             continue
 
-        # Apply a random book effect with a certain probability
-        if bookbag:  # Only apply if there are books in the bookbag
-            book = random.choice(bookbag)
-            if random.random() <= book.get_trigger_chance():
-                book.apply_effect(game_state)
+        # Allow the player to choose a book to use after the first guess in each round
+        if attempts > 0 and bookbag:
+            print("Would you like to use a book? Y/N")
+            use_book = input().strip().upper()
+            if use_book == 'Y':
+                print("Choose a book to use:")
+                for idx, book in enumerate(bookbag):
+                    print(f"{idx + 1}. {book.name} - {book.description}")
+                choice = int(input("Enter the number of the book to use: ")) - 1
+                if 0 <= choice < len(bookbag):
+                    selected_book = bookbag[choice]
+                    trigger_chance = selected_book.get_trigger_chance()
+                    if random.random() <= trigger_chance:
+                        selected_book.apply_effect(game_state)
+                        print(f"The effect of '{selected_book.name}' has been applied!")
+                    else:
+                        print(f"The effect of '{selected_book.name}' did not trigger.")
+                else:
+                    print("Invalid selection. No book was used.")
+            else:
+                print("No book used this turn.")
 
         guess = list(player_input)
         guess_history.append(guess)
@@ -177,11 +222,12 @@ def main():
 
         # Check win condition
         if ''.join(current_guess) == answer:
-            display_ui(current_guess, guess_history, correct_letters, incorrect_letters)
+            display_ui(game_state)
             print(f"Congratulations! You've guessed the word '{answer}' correctly!")
+            choose_book_reward()  # Allow the player to choose a book reward after winning
             break
     else:
-        display_ui(current_guess, guess_history, correct_letters, incorrect_letters)
+        display_ui(game_state)
         print(f"Game Over! The correct word was '{answer}'.")
 
 if __name__ == "__main__":
