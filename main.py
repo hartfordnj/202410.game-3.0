@@ -273,6 +273,9 @@ def main():
         guessed_letters = set()
         attempts = 0
 
+        # Initialize the tracking of book usage for this round
+        books_used_this_round = {book.name: False for book in bookbag}
+
         game_state = {
             'current_guess': current_guess,
             'answer': answer,
@@ -299,37 +302,43 @@ def main():
             book_triggered = None
             game_state['active_effects'] = []  # Reset active effects for this turn
 
-            # If it's after the first guess and the bookbag is not empty
-            if attempts > 0 and bookbag:
-                print("Would you like to use a book from your bookbag? (Y/N)")
-                use_book = input().strip().upper()
-                if use_book == 'Y':
-                    # Display list of books
-                    print("Choose a book to use:")
-                    for idx, book in enumerate(bookbag):
-                        print(f"{idx + 1}. {book.name} - {book.description}")
-                    choice = input("Enter the number of the book to use: ").strip()
-                    if choice.isdigit():
-                        choice = int(choice) - 1
-                        if 0 <= choice < len(bookbag):
-                            selected_book = bookbag[choice]
-                            last_book_used = selected_book
-                            trigger_chance = selected_book.get_trigger_chance(game_state)
-                            if random.random() <= trigger_chance:
-                                selected_book.apply_effect(game_state)
-                                book_triggered = True
-                                print(f"The effect of '{selected_book.name}' has been applied!")
+            # If it's after the first guess and there are books available to use this round
+            if attempts > 0:
+                available_books_to_use = [book for book in bookbag if not books_used_this_round.get(book.name, False)]
+                if available_books_to_use:
+                    print("Would you like to use a book from your bookbag? (Y/N)")
+                    use_book = input().strip().upper()
+                    if use_book == 'Y':
+                        # Display list of available books
+                        print("Choose a book to use:")
+                        for idx, book in enumerate(available_books_to_use):
+                            print(f"{idx + 1}. {book.name} - {book.description}")
+                        choice = input("Enter the number of the book to use: ").strip()
+                        if choice.isdigit():
+                            choice = int(choice) - 1
+                            if 0 <= choice < len(available_books_to_use):
+                                selected_book = available_books_to_use[choice]
+                                last_book_used = selected_book
+                                trigger_chance = selected_book.get_trigger_chance(game_state)
+                                if random.random() <= trigger_chance:
+                                    selected_book.apply_effect(game_state)
+                                    book_triggered = True
+                                    print(f"The effect of '{selected_book.name}' has been applied!")
+                                else:
+                                    book_triggered = False
+                                    print(f"The effect of '{selected_book.name}' did not trigger.")
+                                # Mark the book as used in this round
+                                books_used_this_round[selected_book.name] = True
                             else:
-                                book_triggered = False
-                                print(f"The effect of '{selected_book.name}' did not trigger.")
+                                print("Invalid selection. No book was used.")
                         else:
-                            print("Invalid selection. No book was used.")
+                            print("Invalid input. No book was used.")
                     else:
-                        print("Invalid input. No book was used.")
+                        print("No book used this turn.")
                 else:
-                    print("No book used this turn.")
+                    print("You have used all your books this round.")
             else:
-                print("No books available or this is your first guess.")
+                print("No books can be used on the first guess.")
 
             # Proceed to get player's guess
             player_input = input("Enter your guess: ").upper()
