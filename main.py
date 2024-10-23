@@ -135,7 +135,7 @@ def increase_global_trigger_chance(game_state):
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def display_ui(game_state, last_book_used=None, book_triggered=None):
+def display_ui(game_state, last_book_used=None, book_triggered=None, books_used_this_round=None):
     clear_screen()
     print("Guess the 5-letter word!\n")
     print(f"Current Guess: {' '.join(game_state['current_guess'])}\n")
@@ -157,6 +157,13 @@ def display_ui(game_state, last_book_used=None, book_triggered=None):
             print(f"The effect of '{last_book_used.name}' was applied!")
         else:
             print(f"The effect of '{last_book_used.name}' did not trigger.")
+    print()
+    # Show books used this round if provided
+    if books_used_this_round is not None:
+        print("Books Used This Round:")
+        for book_name, used in books_used_this_round.items():
+            status = "Used" if used else "Available"
+            print(f"- {book_name}: {status}")
     print()
 
 # Book Management Functions
@@ -294,7 +301,7 @@ def main():
 
         # Start the guessing game loop for this enemy
         while attempts < max_attempts:
-            display_ui(game_state, last_book_used, book_triggered)
+            display_ui(game_state, last_book_used, book_triggered, books_used_this_round)
             list_books_in_bookbag()  # Display the books in the player's bookbag
 
             # Reset book tracking variables
@@ -365,12 +372,12 @@ def main():
 
             # Check win condition
             if ''.join(current_guess) == answer:
-                display_ui(game_state, last_book_used, book_triggered)
+                display_ui(game_state, last_book_used, book_triggered, books_used_this_round)
                 print(f"Congratulations! You've defeated {enemy_name} by guessing the word '{answer}'!")
                 choose_book_reward()  # Allow the player to choose a book reward after winning
                 break
         else:
-            display_ui(game_state, last_book_used, book_triggered)
+            display_ui(game_state, last_book_used, book_triggered, books_used_this_round)
             print(f"Game Over! You were defeated by {enemy_name}. The correct word was '{answer}'.")
             return  # End the game if the player loses
 
